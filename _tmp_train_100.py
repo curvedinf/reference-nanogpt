@@ -39,8 +39,8 @@ if dist.is_available() and dist.is_initialized():
 else:
     local_rank = int(os.environ.get("LOCAL_RANK", 0))
 
-os.environ["TRITON_CACHE_DIR"] = f"/workspace/triton-cache/rank_{local_rank}"
-os.environ["TORCHINDUCTOR_DIR"] = f"/workspace/torchinductor-cache/rank_{local_rank}"
+os.environ["TRITON_CACHE_DIR"] = f"/tmp/triton-cache/rank_{local_rank}"
+os.environ["TORCHINDUCTOR_DIR"] = f"/tmp/torchinductor-cache/rank_{local_rank}"
 
 def _env_float(name: str, default: float) -> float:
     raw = os.environ.get(name)
@@ -483,16 +483,16 @@ class Hyperparameters:
     input_bin : str = 'data/fineweb10B/fineweb_train_*.bin' # input .bin to train on
     input_val_bin : str = 'data/fineweb10B/fineweb_val_*.bin' # input .bin to eval validation loss on
     # optimization hyperparams
-    batch_size : int = 8*64 # batch size, in sequences, across all devices
-    device_batch_size : int = 64 # batch size, in sequences, per device
+    batch_size : int = 64 # batch size, in sequences, across all devices
+    device_batch_size : int = 1 # batch size, in sequences, per device
     sequence_length : int = 1024 # sequence length, in tokens
-    num_iterations : int = 3000 # number of iterations to run
+    num_iterations : int = 100 # number of iterations to run
     warmup_iters : int = 0
     warmdown_iters : int = 900 # number of iterations of linear warmup/warmdown for triangular or trapezoidal schedule
     weight_decay : float = 0
     # evaluation and logging hyperparams
-    val_loss_every : int = 125 # every how many steps to evaluate val loss? 0 for only at the end
-    val_tokens : int = 10485760 # how many tokens of validation data? it's important to keep this fixed for consistent comparisons
+    val_loss_every : int = 0 # every how many steps to evaluate val loss? 0 for only at the end
+    val_tokens : int = 1024 # how many tokens of validation data? it's important to keep this fixed for consistent comparisons
     save_every : int = 0 # every how many steps to save the checkpoint? 0 for only at the end
     # architecture toggles
     ssinf3_weight_matched : bool = False
@@ -601,7 +601,7 @@ for m in model.modules():
 
 if hasattr(config, "coordinate_descent_tuning"):
     config.coordinate_descent_tuning = True # suggested by @Chillee
-model = torch.compile(model)
+# model = torch.compile(model)
 # here we wrap model into DDP container
 model = DDP(model, device_ids=[ddp_local_rank])
 raw_model = model.module # always contains the "raw" unwrapped model
